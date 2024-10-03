@@ -31,7 +31,7 @@ To replicate the analysis, please follow these steps to obtain the 2022 ACS data
 2. Navigate to the "Select Data" page and select the 2022 ACS dataset.
 3. Choose relevant variables, including `EDUCD` (to identify respondents with doctoral degrees) and `STATEICP` (to identify the state).
 5. Download the dataset in `.dta` format.
-6. Extract the data and clean it using @citeR, and R library @citeTidyverse. 
+6. Extract the data and clean it using @citeR, and R library Tidyverse (@citeTidyverse). 
 
 # Overview of Estimation Approach
 
