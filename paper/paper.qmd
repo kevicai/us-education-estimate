@@ -1,0 +1,85 @@
+---
+title: "Estimating the Number of Respondents in U.S. States with a Doctoral Degree"
+author: "Kevin Cai"
+thanks: "Code and data are available at: https://github.com/kevicai/us-education-estimate"
+date: today
+date-format: long
+format:
+  pdf: default
+number-sections: true
+bibliography: references.bib
+---
+
+```{r}
+#| include: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(knitr)
+library(ggplot2)
+
+# read data
+data <- read_csv("../data/cleaned_ipums.csv")
+```
+
+# Instructions to Obtain the Data
+
+To replicate the analysis, please follow these steps to obtain the 2022 ACS data from IPUMS (@ipumsusa):
+
+1. Go to [IPUMS USA](https://usa.ipums.org/usa/).
+2. Navigate to the "Select Data" page and select the 2022 ACS dataset.
+3. Choose relevant variables, including `EDUCD` (to identify respondents with doctoral degrees) and `STATEICP` (to identify the state).
+5. Download the dataset in `.dta` format.
+6. Extract the data and clean it using @citeR, and R library @citeTidyverse. 
+
+# Overview of Estimation Approach
+
+To estimate the number of respondents with doctoral degrees as their heighest education in each state, I used the ratio estimators approach of Laplace. The ratio estimators approach is used to estimate the total population size using a known ratio from a sample (@textbook). In this case, we first use the dataset we obtained and find the ratio of people with doctoral degree in California. The ratio can be obtained by dividing the number of people with doctoral degree in California by the total number of respondents in California. Then we can apply that ratio to other states to get an estimate of the number of doctoral respondents in each state.
+
+# Analysis
+
+```{r, message = FALSE, echo = FALSE}
+california_doctoral <- data |>
+    filter(stateicp == "california" & educd == "doctoral degree") |>
+    summarise(count = n())
+
+total_ca_respondents <- 391171
+ratio_ca <- california_doctoral$count / total_ca_respondents
+
+total_respondents_per_state <- data |>
+    group_by(stateicp) |>
+    summarise(total_respondents = n(), .groups = "drop")
+
+# Count doctoral degree holders in each state
+doctoral_counts <- data |>
+    filter(educd == "doctoral degree") |>
+    group_by(stateicp) |>
+    summarise(doctoral_count = n(), .groups = "drop")
+
+combined_counts <- total_respondents_per_state |>
+    left_join(doctoral_counts, by = "stateicp")
+
+# Apply the California ratio to estimate the total number of doctoral degree holders in each state
+estimated_totals <- combined_counts |>
+    mutate(estimated_doctoral_count = total_respondents * ratio_ca) |>
+    select(stateicp, doctoral_count, estimated_doctoral_count)
+```
+
+```{r, message = FALSE, echo = FALSE}
+#| label: tbl-data
+#| tbl-cap: "Estimated vs. Actual Number of Doctoral Degree Holders by State"
+estimated_totals <- estimated_totals |>
+    mutate(
+        estimated_doctoral_count = round(estimated_doctoral_count) # Round to whole number
+    )
+
+estimated_totals |>
+    kable(
+        col.names = c("State", "Actual Doctoral Count", "Estimated Doctoral Count"))
+```
+
+From @tbl-data, we can see that there is a difference between the estimated and actual number of doctoral degree holders by state. I suspect this difference is caused by various factors affecting the quality of education that residents in each state can receive. Factors such as whether the state has good high schools to prepare residents for university, and whether it has research universities, will all influence the rate at which people attain doctoral degrees. This explains why using California as a reference for all states results in a noticeable difference among them. California is a relatively affluent state, leading to a higher quality of education. Consequently, California has a higher ratio of individuals with doctoral degrees as their highest level of education compared to most other U.S. states, as seen in the table.
+
+\newpage
+# References
